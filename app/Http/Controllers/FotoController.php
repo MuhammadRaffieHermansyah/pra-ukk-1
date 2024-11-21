@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Foto;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 
 class FotoController extends Controller
@@ -26,27 +28,44 @@ class FotoController extends Controller
      */
     public function store(Request $request)
     {
+        // Validasi input data
         $validatedFoto = $request->validate([
-            'foto' => 'required',
-            'description' => 'required',
+            'name' => 'required',
+            'description' => 'required|string',
             'album_id' => 'required',
+            'category_id' => 'required',
             'user_id' => 'required',
         ]);
-        $imageName = time() . '.' . $request->foto->extension();
-        $fileLocation = $request->foto->move(public_path('foto_iamges'), $imageName);
-        $validatedFoto['name'] = $imageName;
-        $validatedFoto['file_location'] = $fileLocation;
 
-        Foto::create($validatedFoto);
-        return redirect('/')->with('success', 'Foto berhasil diupload');
+        if ($request->hasFile('foto')) {
+            // Upload foto baru
+            $fileLocation = $request->file('foto')->store('foto_images', 'public');
+
+            // Simpan nama dan lokasi file di database
+            $validatedFoto['file_location'] = $fileLocation;
+
+            // Simpan data ke database
+            Foto::create($validatedFoto);
+
+            // Redirect dengan pesan sukses
+            return redirect()->back()->with('success', 'Foto berhasil diupload');
+        }
+
+        return redirect()->back()->with('error', 'Tolong masukan foto yang ingin di unggah!');
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Foto $foto)
+    public function show($name)
     {
-        return view('pages.foto.show');
+        // dd($name);
+        $foto = Foto::with(['user', 'fotoLikes', 'commentFotos' => ['user'], 'album', 'category'])->where('name', $name)->first();
+        $foto['isLike'] = $foto->fotoLikes->contains('user_id', Auth::id());
+        $foto['total_like'] = $foto->fotoLikes->count();
+        $foto['total_comment'] = $foto->commentFotos->count();
+        // return response()->json(['foto' => $foto]);
+        return view('pages.foto.show', compact('foto'));
     }
 
     /**
@@ -60,26 +79,32 @@ class FotoController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request,  $id)
+    public function update(Request $request, $id)
     {
-        $fotoToUpdate = Foto::find($id);
+        // Temukan foto berdasarkan ID
+        $fotoToUpdate = Foto::findOrFail($id);
+
+        // Validasi data yang masuk
         $validatedFoto = $request->validate([
-            'foto' => '',
-            'description' => '',
-            'album_id' => '',
-            'user_id' => '',
+            'foto' => 'image|mimes:jpeg,png,jpg,gif,svg|max:2048', // contoh validasi untuk file gambar
+            'description' => 'string|nullable',
+            'album_id' => 'integer|exists:albums,id', // validasi foreign key
+            'user_id' => 'integer|exists:users,id', // validasi foreign key
         ]);
 
-        if ($request->file('foto')) {
-            // upload image
-            $imageName = time() . '.' . $request->foto->extension();
-            $fileLocation = $request->foto->move(public_path('foto_iamges'), $imageName);
-            $validatedFoto['name'] = $imageName;
-            $validatedFoto['file_location'] = $fileLocation;
+        // Jika ada file foto yang diupload
+        if ($request->hasFile('foto')) {
+            // Upload foto baru
+            $fileLocation = $request->file('foto')->store('foto_images', 'public');
 
-            Storage::delete($fotoToUpdate->file_location);
+            // Simpan nama dan lokasi file di database
+            $validatedFoto['file_location'] = $fileLocation;
         }
+
+        // Update data di database
         $fotoToUpdate->update($validatedFoto);
+
+        // Redirect dengan pesan sukses
         return redirect('/')->with('success', 'Foto berhasil diupdate');
     }
 
@@ -89,6 +114,30 @@ class FotoController extends Controller
     public function destroy($id)
     {
         Foto::find($id)->delete();
-        return redirect('/')->with('success', 'Foto berhasil dihapus');
+        return redirect()->back();
+    }
+
+    public function likedFoto()
+    {
+        $fotos = Foto::with(['user', 'fotoLikes', 'commentFotos.user', 'album', 'category'])
+            ->whereHas('fotoLikes', function ($query) {
+                $query->where('user_id', Auth::id());
+            })
+            ->get();
+
+        $fotos = $fotos->map(function ($foto) {
+            // Tambahkan properti tambahan untuk setiap foto
+            $foto['isLike'] = true; // Karena sudah difilter, pasti user telah nge-like foto ini
+            $foto['total_like'] = $foto->fotoLikes ? $foto->fotoLikes->count() : 0;
+            $foto['total_comment'] = $foto->commentFotos ? $foto->commentFotos->count() : 0;
+
+            return $foto;
+        });
+
+        // Kembalikan response JSON atau tampilan
+        // return response()->json(['fotos' => $fotos]);
+
+        // Jika ingin mengembalikan ke view
+        return view('pages.foto.liked-foto', compact('fotos'));
     }
 }

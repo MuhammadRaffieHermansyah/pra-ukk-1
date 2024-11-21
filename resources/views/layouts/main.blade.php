@@ -26,6 +26,7 @@
 <body>
     @include('layouts.navbar')
     @yield('content')
+    <x-confirm-dialog></x-confirm-dialog>
     @vite('resources/js/app.js')
     @stack('script')
     <script>

@@ -29,6 +29,7 @@ class CommentFotoController extends Controller
     public function store(Request $request)
     {
         CommentFoto::create($request->all());
+        return redirect()->back();
     }
 
     /**

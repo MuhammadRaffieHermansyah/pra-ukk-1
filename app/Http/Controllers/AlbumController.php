@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Album;
+use App\Models\Foto;
+use App\Models\FotoCategory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class AlbumController extends Controller
 {
@@ -12,7 +15,8 @@ class AlbumController extends Controller
      */
     public function index()
     {
-        return view('pages.album.index');
+        $albums = Album::all();
+        return view('pages.album.index', compact('albums'));
     }
 
     /**
@@ -33,17 +37,32 @@ class AlbumController extends Controller
             'description' => 'required',
             'user_id' => 'required',
         ]);
-        Album::create($request->all());
-        return redirect('/')->with('success', 'Album berhasil ditambahkan');
+        Album::create($request->except('_token'));
+        return redirect(route('album.index'))->with('success', 'Album berhasil ditambahkan');
     }
 
     /**
      * Display the specified resource.
      */
-    public function show($id)
+    public function show($albumName)
     {
-        $album = Album::findOrFail($id);
-        return view('pages.album.show', compact('album'));
+        $album = Album::where('album_name', $albumName)->first();
+        $fotoCategories = FotoCategory::all();
+        $fotos = Foto::where('album_id', $album->id)->with(['user', 'fotoLikes', 'commentFotos.user', 'album', 'category'])->get();
+
+        $fotos = $fotos->map(function ($foto) {
+            // Tambahkan properti tambahan untuk setiap foto
+            $foto['isLike'] = $foto->fotoLikes->contains('user_id', Auth::id());
+            $foto['total_like'] = $foto->fotoLikes->count();
+            $foto['total_comment'] = $foto->commentFotos->count();
+            return $foto;
+        });
+
+        // Kembalikan response JSON atau tampilan
+        // return response()->json(['fotos' => $fotos]);
+
+        // Jika ingin mengembalikan ke view
+        return view('pages.album.show', compact('album', 'fotos', 'fotoCategories'));
     }
 
     /**
@@ -74,6 +93,6 @@ class AlbumController extends Controller
     public function destroy($id)
     {
         $album = Album::findOrFail($id)->delete();
-        return redirect('/')->with('success', 'Album berhasil dihapus');
+        return redirect(route('album.index'))->with('success', 'Album berhasil dihapus');
     }
 }

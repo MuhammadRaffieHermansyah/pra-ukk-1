@@ -58,8 +58,8 @@ class FotoLikeController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy($id)
+    public function destroy(Request $request)
     {
-        FotoLike::find($id)->delete();
+        FotoLike::where('user_id', $request->user_id)->delete();
     }
 }

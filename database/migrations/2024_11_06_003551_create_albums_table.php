@@ -11,14 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('albums', function (Blueprint $table) {
-            $table->id();
-            $table->string('album_name');
-            $table->text('description');
-            $table->foreignId('user_id');
-            $table->foreign('user_id')->references('id')->on('users');
-            $table->timestamps();
-        });
+        // Schema::create('albums', function (Blueprint $table) {
+        //     $table->id();
+        //     $table->string('album_name');
+        //     $table->text('description');
+        //     $table->foreignId('user_id');
+        //     $table->foreign('user_id')->references('id')->on('users');
+        //     $table->timestamps();
+        // });
     }
 
     /**

@@ -15,8 +15,14 @@ class Foto extends Model
         'description',
         'file_location',
         'album_id',
+        'category_id',
         'user_id',
     ];
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 
     public function fotoLikes(): HasMany
     {
@@ -33,7 +39,7 @@ class Foto extends Model
         return $this->belongsTo(Album::class);
     }
 
-    public function fotoCategory(): BelongsTo
+    public function category(): BelongsTo
     {
         return $this->belongsTo(FotoCategory::class);
     }

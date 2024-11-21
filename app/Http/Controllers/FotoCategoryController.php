@@ -2,18 +2,40 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Foto;
 use App\Models\FotoCategory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class FotoCategoryController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index($name)
     {
-        return view('pages.foto-category.index');
+        // Ambil semua kategori untuk digunakan di view
+        $categories = FotoCategory::all();
+
+        // Filter foto berdasarkan kategori dengan nama yang sesuai
+        $fotos = Foto::with(['user', 'fotoLikes', 'commentFotos.user', 'album', 'category'])
+            ->whereHas('category', function ($query) use ($name) {
+                $query->where('name', $name);
+            })
+            ->get();
+
+        // Tambahkan properti tambahan untuk setiap foto
+        $fotos = $fotos->map(function ($foto) {
+            $foto['isLike'] = $foto->fotoLikes->contains('user_id', Auth::id());
+            $foto['total_like'] = $foto->fotoLikes->count();
+            $foto['total_comment'] = $foto->commentFotos->count();
+            return $foto;
+        });
+
+        // Kembalikan response ke view
+        return view('pages.home.index', compact('fotos', 'categories'));
     }
+
 
     /**
      * Show the form for creating a new resource.

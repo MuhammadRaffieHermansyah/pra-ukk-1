@@ -10,7 +10,7 @@ class Album extends Model
 {
     protected $table = 'albums';
 
-    protected $fllable = ['album_name', 'description', 'user_id'];
+    protected $fillable = ['album_name', 'description', 'user_id'];
 
     public function foto(): HasMany
     {
